@@ -345,39 +345,54 @@ export async function getMonthlyStatementData(year: number, month: number) {
 export async function getAvailableStatementMonths() {
   const supabase = createClient();
 
-  const { data, error } = await supabase
-    .from("portfolio_daily")
-    .select("date")
-    .eq("portfolio_id", PORTFOLIO_ID)
-    .order("date", { ascending: false });
+  // Use RPC for a single fast query instead of fetching all ~1000 rows
+  const { data, error } = await supabase.rpc("get_available_statement_months", {
+    p_portfolio_id: PORTFOLIO_ID,
+  });
 
-  if (error) throw error;
+  if (error) {
+    // Fallback: minimal query if RPC doesn't exist yet
+    const { data: fallback } = await supabase
+      .from("portfolio_daily")
+      .select("date")
+      .eq("portfolio_id", PORTFOLIO_ID)
+      .order("date", { ascending: false });
 
-  // Extract unique year-month combos
-  const months = new Set<string>();
-  for (const row of data ?? []) {
-    const d = new Date(row.date);
-    months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    const months = new Set<string>();
+    for (const row of fallback ?? []) {
+      const d = new Date(row.date);
+      months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+
+    return Array.from(months)
+      .sort()
+      .reverse()
+      .map((m) => {
+        const [y, mo] = m.split("-").map(Number);
+        return {
+          year: y,
+          month: mo,
+          key: m,
+          label: new Date(y, mo - 1).toLocaleDateString("en-US", {
+            month: "long",
+            year: "numeric",
+          }),
+        };
+      });
   }
 
-  return Array.from(months)
-    .sort()
-    .reverse()
-    .map((m) => {
-      const [y, mo] = m.split("-").map(Number);
-      return {
-        year: y,
-        month: mo,
-        key: m,
-        label: new Date(y, mo - 1).toLocaleDateString("en-US", {
-          month: "long",
-          year: "numeric",
-        }),
-      };
-    });
+  return (data ?? []).map((row: { year: number; month: number }) => ({
+    year: row.year,
+    month: row.month,
+    key: `${row.year}-${String(row.month).padStart(2, "0")}`,
+    label: new Date(row.year, row.month - 1).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    }),
+  }));
 }
 
-export async function getTransactions(type?: string) {
+export async function getTransactions(type?: string, limit?: number) {
   const supabase = createClient();
 
   let query = supabase
@@ -388,6 +403,10 @@ export async function getTransactions(type?: string) {
 
   if (type && type !== "all") {
     query = query.eq("type", type);
+  }
+
+  if (limit) {
+    query = query.limit(limit);
   }
 
   const { data, error } = await query;

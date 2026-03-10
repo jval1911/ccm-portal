@@ -44,24 +44,36 @@ export default function PortfolioPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getHoldings(), getPortfolioSummary()]).then(([h, s]) => {
-      const totalValue = h.reduce((sum, pos) => sum + pos.value, 0);
-      const withAllocation = h.map((pos) => ({
-        ...pos,
-        allocation: Number(((pos.value / totalValue) * 100).toFixed(1)),
-      }));
-      setHoldings(withAllocation);
-      setSummary(s);
-      setLoading(false);
-    });
+    Promise.all([getHoldings(), getPortfolioSummary()])
+      .then(([h, s]) => {
+        const totalValue = h.reduce((sum, pos) => sum + pos.value, 0);
+        const withAllocation = h.map((pos) => ({
+          ...pos,
+          allocation: Number(((pos.value / totalValue) * 100).toFixed(1)),
+        }));
+        setHoldings(withAllocation);
+        setSummary(s);
+      })
+      .catch((err) => setError(err?.message || "Failed to load portfolio data"))
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading || !summary) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-96 text-muted">
         Loading portfolio...
+      </div>
+    );
+  }
+
+  if (error || !summary) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-muted gap-3">
+        <p className="text-accent-red font-medium">{error || "No portfolio data found"}</p>
+        <p className="text-sm">Make sure you&apos;ve run the seed.sql in the Supabase SQL Editor.</p>
       </div>
     );
   }

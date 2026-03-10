@@ -47,23 +47,34 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [activity, setActivity] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const tasks = getOperationTasks().filter(
     (t) => t.status === "requires_approval" || t.status === "in_progress"
   );
 
   useEffect(() => {
-    Promise.all([getPortfolioSummary(), getTransactions()])
+    Promise.all([getPortfolioSummary(), getTransactions(undefined, 5)])
       .then(([s, txns]) => {
         setSummary(s);
-        setActivity(txns.slice(0, 5));
+        setActivity(txns);
       })
+      .catch((err) => setError(err?.message || "Failed to load data"))
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading || !summary) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-96 text-muted">
         Loading portfolio data...
+      </div>
+    );
+  }
+
+  if (error || !summary) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-muted gap-3">
+        <p className="text-accent-red font-medium">{error || "No portfolio data found"}</p>
+        <p className="text-sm">Make sure you&apos;ve run the seed.sql in the Supabase SQL Editor.</p>
       </div>
     );
   }

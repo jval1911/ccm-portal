@@ -63,6 +63,31 @@ create table if not exists holdings (
 
 
 -- =============================================================================
+-- SECTION 1b: INDEXES (speeds up all queries significantly)
+-- =============================================================================
+
+create index if not exists idx_portfolio_daily_pid_date
+  on portfolio_daily (portfolio_id, date);
+
+create index if not exists idx_transactions_pid_date
+  on transactions (portfolio_id, date);
+
+create index if not exists idx_holdings_pid
+  on holdings (portfolio_id);
+
+-- RPC: get distinct statement months in one fast query
+create or replace function get_available_statement_months(p_portfolio_id uuid)
+returns table (year int, month int) language sql stable as $$
+  select distinct
+    extract(year from date)::int as year,
+    extract(month from date)::int as month
+  from portfolio_daily
+  where portfolio_id = p_portfolio_id
+  order by year desc, month desc;
+$$;
+
+
+-- =============================================================================
 -- SECTION 2: ROW LEVEL SECURITY
 -- =============================================================================
 
