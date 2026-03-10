@@ -1,0 +1,22 @@
+{
+  "name": "CCM Capital - Client Portal",
+  "short_name": "CCM Capital",
+  "description": "Portfolio performance and fund operations portal",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0a0e17",
+  "theme_color": "#0a0e17",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
